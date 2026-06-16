@@ -1,0 +1,49 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.*'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Deploy Qt DLLs
+        run: windeployqt build/Release/zcapture.exe --no-translations --no-system-d3d-compiler --no-quick-import
+
+      - name: Package portable ZIP
+        run: Compress-Archive -Path build/Release/* -DestinationPath zcapture-windows-portable.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcapture-windows-portable
+          path: zcapture-windows-portable.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: zcapture-windows-portable.zip
+          generate_release_notes: true
