@@ -32,10 +32,10 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Deploy Qt DLLs
-        run: windeployqt build/Release/zcapture.exe --no-translations --no-system-d3d-compiler --no-quick-import
+        run: windeployqt build/src/Release/zcapture.exe --no-translations --no-system-d3d-compiler --no-quick-import
 
       - name: Package portable ZIP
-        run: Compress-Archive -Path build/Release/* -DestinationPath zcapture-windows-portable.zip
+        run: Compress-Archive -Path build/src/Release/* -DestinationPath zcapture-windows-portable.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
