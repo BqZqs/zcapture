@@ -129,7 +129,7 @@ void SelectionWidget::parentMouseReleaseEvent(QMouseEvent* e)
 // ================================================================
 void SelectionWidget::updateHandleLayout()
 {
-    const int hs = 8;
+    const int hs = 16;
     QRect r(0, 0, m_selection.width(), m_selection.height());   // 控件自身坐标系
     const int hhs = hs / 2;
 
@@ -146,10 +146,10 @@ void SelectionWidget::updateHandleLayout()
 
 void SelectionWidget::paintHandles(QPainter& painter) const
 {
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(Qt::white);
+    painter.setPen(QPen(Qt::black, 1));     // 黑边
+    painter.setBrush(Qt::white);            // 白色填充
     for (int i = 0; i < 8; ++i)
-        painter.drawRect(m_handleRects[i]);
+        painter.drawEllipse(m_handleRects[i]);
 }
 
 SelectionWidget::Handle SelectionWidget::hitTestHandle(QPoint pos) const

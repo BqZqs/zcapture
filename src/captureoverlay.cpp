@@ -97,6 +97,8 @@ void CaptureOverlay::keyPressEvent(QKeyEvent* e)
 // ================================================================
 void CaptureOverlay::onSelectionChanged(const QRect& /*rect*/)
 {
+    if (m_selectionWidget->isConfirmed())
+        m_buttonHandler.updatePosition(m_selectionWidget->selection());
     update();
 }
 
