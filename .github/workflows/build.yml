@@ -32,20 +32,20 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Deploy Qt DLLs
-        run: windeployqt build/src/Release/zcapture.exe --no-translations --no-system-d3d-compiler --no-quick-import
+        run: windeployqt build/src/Release/pixelshot.exe --no-translations --no-system-d3d-compiler --no-quick-import
 
       - name: Package portable ZIP
-        run: Compress-Archive -Path build/src/Release/* -DestinationPath zcapture-windows-portable.zip
+        run: Compress-Archive -Path build/src/Release/* -DestinationPath pixelshot-windows-portable.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zcapture-windows-portable
-          path: zcapture-windows-portable.zip
+          name: pixelshot-windows-portable
+          path: pixelshot-windows-portable.zip
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: zcapture-windows-portable.zip
+          files: pixelshot-windows-portable.zip
           generate_release_notes: true

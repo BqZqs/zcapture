@@ -29,6 +29,8 @@ CaptureOverlay::CaptureOverlay()
     connect(m_selectionWidget, &SelectionWidget::selectionConfirmed,
             this, &CaptureOverlay::onSelectionConfirmed);
 
+
+    // 按钮管理器（确认/取消按钮）
     auto* cancelBtn = new CaptureToolButton(CaptureToolButton::Cancel, this);
     auto* saveBtn   = new CaptureToolButton(CaptureToolButton::Save, this);
     connect(cancelBtn, &CaptureToolButton::clicked, this, [this]() {

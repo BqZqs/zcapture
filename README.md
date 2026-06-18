@@ -1,4 +1,4 @@
-# ZCapture
+# PixelShot
 
 > A lightweight screenshot tool for Windows, inspired by Flameshot.
 
@@ -16,14 +16,14 @@
 ## Usage
 
 ```
-zcapture                    → Start as daemon (system tray)
-zcapture gui                → Interactive screenshot
-zcapture gui -c             → Interactive screenshot + copy to clipboard
-zcapture gui -p ./screens   → Interactive screenshot + save to path
-zcapture gui -d 3000        → Interactive screenshot with 3s delay
-zcapture full               → Fullscreen screenshot
-zcapture full -c            → Fullscreen screenshot + copy
-zcapture config             → Open configuration window
+pixelshot                    → Start as daemon (system tray)
+pixelshot gui                → Interactive screenshot
+pixelshot gui -c             → Interactive screenshot + copy to clipboard
+pixelshot gui -p ./screens   → Interactive screenshot + save to path
+pixelshot gui -d 3000        → Interactive screenshot with 3s delay
+pixelshot full               → Fullscreen screenshot
+pixelshot full -c            → Fullscreen screenshot + copy
+pixelshot config             → Open configuration window
 ```
 
 ## Tech Stack

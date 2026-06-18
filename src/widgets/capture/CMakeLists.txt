@@ -1,4 +1,4 @@
-target_sources(zcapture PRIVATE
+target_sources(pixelshot PRIVATE
     capturetoolbutton.cpp
     buttonhandler.cpp
     selectionwidget.cpp

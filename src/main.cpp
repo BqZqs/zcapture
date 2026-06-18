@@ -9,8 +9,8 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     QApplication::setStyle("Fusion");          // 跨 Windows 版本统一风格
-    app.setApplicationName("ZCapture");
-    app.setOrganizationName("ZCapture");
+    app.setApplicationName("PixelShot");
+    app.setOrganizationName("PixelShot");
 
     MainWindow window;
     window.show();

@@ -12,7 +12,7 @@
 MainWindow::MainWindow(QWidget* parent)
   : QWidget(parent)
 {
-    setWindowTitle("ZCapture");
+    setWindowTitle("PixelShot");
     setFixedSize(460, 200);
 
     auto* lay = new QVBoxLayout(this);
@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget* parent)
     lay->setContentsMargins(20, 15, 20, 15);
 
     // 标题
-    auto* title = new QLabel("<h2>ZCapture</h2>");
+    auto* title = new QLabel("<h2>PixelShot</h2>");
     title->setAlignment(Qt::AlignCenter);
     lay->addWidget(title);
 
@@ -98,7 +98,7 @@ void MainWindow::onCaptureFinished(const QPixmap& pixmap)
     }
 
     // 用当前时间戳命名保存
-    QString file = m_saveDir + "/zcapture_" +
+    QString file = m_saveDir + "/pixelshot_" +
                    QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss") +
                    ".png";
     if (pixmap.save(file, "PNG")) {

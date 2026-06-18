@@ -1,3 +1,3 @@
-target_sources(zcapture PRIVATE
+target_sources(pixelshot PRIVATE
     captureactions.cpp
 )
