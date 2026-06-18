@@ -40,6 +40,7 @@ CaptureOverlay::CaptureOverlay()
         m_actions->executeSave(m_screenshot, m_selectionWidget->selection());
     });
     m_buttonHandler.setButtons({ cancelBtn, saveBtn });
+    m_buttonHandler.hide();
 
     // 动作逻辑（裁剪截图 → 发射信号）
     m_actions = new CaptureActions(this);

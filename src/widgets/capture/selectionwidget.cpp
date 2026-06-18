@@ -129,8 +129,8 @@ void SelectionWidget::parentMouseReleaseEvent(QMouseEvent* e)
 void SelectionWidget::updateHandleLayout()
 {
     const int hs = 8;
-    const QRect& r = m_selection;
-    int hhs = hs / 2;
+    QRect r(0, 0, m_selection.width(), m_selection.height());   // 控件自身坐标系
+    const int hhs = hs / 2;
 
     m_handleRects[TopLeft]     = QRect(r.left()  - hhs, r.top()    - hhs, hs, hs);
     m_handleRects[TopRight]    = QRect(r.right() - hhs, r.top()    - hhs, hs, hs);
