@@ -1,5 +1,6 @@
 #include "captureoverlay.h"
 #include "tools/abstracttwopointtool/selectionwidget.h"
+#include "widgets/capture/capturetoolbutton.h"
 
 #include <QApplication>
 #include <QPainter>
@@ -10,7 +11,7 @@
 CaptureOverlay::CaptureOverlay()
 {
     setAttribute(Qt::WA_DeleteOnClose);
-    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint); // 无边框置顶
+    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint);
     setMouseTracking(true);
 
     // 抓取主屏
@@ -20,28 +21,33 @@ CaptureOverlay::CaptureOverlay()
         setGeometry(screen->geometry());
     }
 
-    // 选区控件：以 eventFilter 方式拦截本窗口的鼠标事件
+    // 选区控件（eventFilter 拦截鼠标事件）
     m_selectionWidget = new SelectionWidget(this);
     connect(m_selectionWidget, &SelectionWidget::selectionChanged,
             this, &CaptureOverlay::onSelectionChanged);
     connect(m_selectionWidget, &SelectionWidget::selectionConfirmed,
             this, &CaptureOverlay::onSelectionConfirmed);
 
-    QApplication::setOverrideCursor(Qt::CrossCursor);   // 全局十字光标
+    // 确认/取消按钮
+    auto* cancelBtn = new CaptureToolButton(CaptureToolButton::Cancel, this);
+    auto* saveBtn   = new CaptureToolButton(CaptureToolButton::Save, this);
+    m_buttonHandler.setButtons({ cancelBtn, saveBtn });
+
+    QApplication::setOverrideCursor(Qt::CrossCursor);
 }
 
 // ================================================================
-// 绘制：截图 → 遮罩 → 按钮 → 提示文字
+// 绘制
 // ================================================================
 void CaptureOverlay::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
-    painter.drawPixmap(0, 0, m_screenshot);         // 第 1 层：截图背景
+    painter.drawPixmap(0, 0, m_screenshot);
 
     if (m_selectionWidget->isVisible()) {
         QRect sel = m_selectionWidget->selection();
 
-        // 第 2 层：选区外半透明暗化遮罩
+        // 选区外暗化遮罩
         painter.setBrush(QColor(0, 0, 0, 120));
         painter.setPen(Qt::NoPen);
         QRegion full(rect());
@@ -49,14 +55,8 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
         painter.setClipRegion(full.subtracted(inner));
         painter.drawRect(rect());
         painter.setClipRect(rect());
-
-        // 第 3 层：确认状态时绘制 ✓/✕ 按钮
-        if (m_selectionWidget->isConfirmed()) {
-            m_actionBar.paint(painter);
-        }
     }
 
-    // 未确认时在屏幕底部显示操作提示
     if (!m_selectionWidget->isConfirmed()) {
         painter.setPen(Qt::white);
         painter.setFont(QFont("Segoe UI", 14));
@@ -67,28 +67,29 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
 }
 
 // ================================================================
-// 鼠标：仅处理确认按钮区域的点击（选区拖拽由 SelectionWidget eventFilter 接管）
+// 鼠标：仅处理按钮点击（选区拖拽由 SelectionWidget eventFilter 接管）
 // ================================================================
 void CaptureOverlay::mousePressEvent(QMouseEvent* e)
 {
     if (e->button() != Qt::LeftButton) return;
 
     if (m_selectionWidget->isConfirmed()) {
-        ActionButton btn = m_actionBar.hitTest(e->pos());
-        if (btn == ActionButton::Save) {
-            QApplication::restoreOverrideCursor();
+        auto* btn = m_buttonHandler.hitTest(e->pos());
+        if (!btn) return;
+
+        QApplication::restoreOverrideCursor();
+
+        if (btn->toolType() == CaptureToolButton::Save) {
             emit captureFinished(m_screenshot.copy(m_selectionWidget->selection()));
-            close();
-        } else if (btn == ActionButton::Cancel) {
-            QApplication::restoreOverrideCursor();
-            emit captureFinished(QPixmap());             // 空图像 = 取消
-            close();
+        } else {
+            emit captureFinished(QPixmap());       // 空图 = 取消
         }
+        close();
     }
 }
 
 // ================================================================
-// 键盘：ESC = 取消  /  Enter = 保存
+// 键盘
 // ================================================================
 void CaptureOverlay::keyPressEvent(QKeyEvent* e)
 {
@@ -110,11 +111,12 @@ void CaptureOverlay::keyPressEvent(QKeyEvent* e)
 // ================================================================
 void CaptureOverlay::onSelectionChanged(const QRect& /*rect*/)
 {
-    update();   // 选区变化 → 重绘遮罩
+    update();
 }
 
 void CaptureOverlay::onSelectionConfirmed()
 {
-    m_actionBar.updateLayout(m_selectionWidget->selection());
+    m_buttonHandler.updatePosition(m_selectionWidget->selection());
+    m_buttonHandler.show();
     update();
 }

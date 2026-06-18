@@ -1,22 +1,25 @@
 /**
- * 选区控件。
+ * 选区控件（含八向句柄）。
  * 参照 Flameshot SelectionWidget 设计，通过 eventFilter 拦截父窗口鼠标事件。
- * 三态切换：Idle（空闲）→ Drawing（拖拽选区）→ Confirmed（确认，可缩放）。
- * 本身 WA_TransparentForMouseEvents，不消费事件，eventFilter 返回 false。
+ * 三态切换：Idle → Drawing → Confirmed。
+ * 句柄绘制和缩放算法内聚在本类中。
  */
 #pragma once
 
 #include <QWidget>
 #include <QPoint>
 #include <QRect>
-#include "selectionhandles.h"
 
 class SelectionWidget : public QWidget
 {
     Q_OBJECT
 public:
-    // 三态：空闲 → 绘制中 → 已确认
     enum class State { Idle, Drawing, Confirmed };
+    enum Handle {
+        None = -1,
+        TopLeft, Top, TopRight, Right,
+        BottomRight, Bottom, BottomLeft, Left
+    };
 
     explicit SelectionWidget(QWidget* parent = nullptr);
 
@@ -24,27 +27,34 @@ public:
     QRect selection() const { return m_selection; }
 
 signals:
-    void selectionChanged(const QRect& rect);      // 选区变化（实时）
-    void selectionStarted();                        // 开始拖拽选区
-    void selectionConfirmed();                      // 选区确认（边长 > 10px）
-    void selectionCancelled();                      // 选区太小，视为取消
+    void selectionChanged(const QRect& rect);
+    void selectionStarted();
+    void selectionConfirmed();
+    void selectionCancelled();
 
 protected:
-    bool eventFilter(QObject* obj, QEvent* event) override;   // 拦截父窗口鼠标事件
-    void paintEvent(QPaintEvent*) override;                   // 画选区边框 + 句柄
+    bool eventFilter(QObject* obj, QEvent* event) override;
+    void paintEvent(QPaintEvent*) override;
 
 private:
-    void parentMousePressEvent(QMouseEvent* e);    // 拖拽开始 / 句柄命中
-    void parentMouseMoveEvent(QMouseEvent* e);     // 拖拽缩放 / 实时更新
-    void parentMouseReleaseEvent(QMouseEvent* e);  // 确认 / 取消
-    void beginDrawing(QPoint pos);                  // 进入 Drawing 状态
-    void updateCursor(QMouseEvent* e);              // 根据句柄切换光标样式
+    void parentMousePressEvent(QMouseEvent* e);
+    void parentMouseMoveEvent(QMouseEvent* e);
+    void parentMouseReleaseEvent(QMouseEvent* e);
+    void beginDrawing(QPoint pos);
+    void updateCursor(QMouseEvent* e);
 
-    SelectionHandles m_handles;                     // 八向句柄工具
-    QPoint m_startPoint;                            // 初始拖拽起点
-    QRect m_selection;                              // 当前选区
-    QRect m_selectionBeforeDrag;                    // 拖拽前的选区（用于计算新尺寸）
+    // ---- 句柄（内聚实现） ----
+    void updateHandleLayout();                              // 根据当前选区更新句柄坐标
+    void paintHandles(QPainter& painter) const;             // 绘制八个白色句柄
+    Handle hitTestHandle(QPoint pos) const;                 // 判断鼠标命中了哪个句柄
+    QRect applyResize(const QRect& original, Handle h, QPoint delta) const;
+    static QCursor cursorForHandle(Handle h);               // 句柄对应的鼠标样式
+
+    QRect m_selection;
+    QRect m_selectionBeforeDrag;
+    QPoint m_startPoint;
     State m_state = State::Idle;
-    SelectionHandles::Handle m_activeHandle = SelectionHandles::None;
-    QPoint m_dragStart;                             // 拖拽起点（相对于父窗口）
+    Handle m_activeHandle = None;
+    QPoint m_dragStart;
+    QRect m_handleRects[8];                                 // 八个句柄矩形
 };

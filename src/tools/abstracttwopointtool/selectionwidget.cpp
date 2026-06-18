@@ -2,19 +2,22 @@
 #include <QPainter>
 #include <QMouseEvent>
 
+// ================================================================
+// 构造
+// ================================================================
 SelectionWidget::SelectionWidget(QWidget* parent)
   : QWidget(parent)
 {
-    setAttribute(Qt::WA_TransparentForMouseEvents);  // 本身不消费鼠标事件
-    hide();                                           // 初始隐藏
-    parent->installEventFilter(this);                 // 拦截父窗口鼠标事件
-    parent->setMouseTracking(true);                   // 父窗口启用鼠标追踪
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+    hide();
+    parent->installEventFilter(this);
+    parent->setMouseTracking(true);
 }
 
 // ================================================================
-// eventFilter — 把父窗口的鼠标事件路由到内部处理方法
+// eventFilter
 // ================================================================
-bool SelectionWidget::eventFilter(QObject* obj, QEvent* event)
+bool SelectionWidget::eventFilter(QObject*, QEvent* event)
 {
     if (event->type() == QEvent::MouseButtonPress)
         parentMousePressEvent(static_cast<QMouseEvent*>(event));
@@ -22,12 +25,11 @@ bool SelectionWidget::eventFilter(QObject* obj, QEvent* event)
         parentMouseMoveEvent(static_cast<QMouseEvent*>(event));
     else if (event->type() == QEvent::MouseButtonRelease)
         parentMouseReleaseEvent(static_cast<QMouseEvent*>(event));
-
-    return false; // 不消费事件，让父窗口也能响应（比如确认按钮点击）
+    return false;
 }
 
 // ================================================================
-// 绘制：选区边框（红色=拖拽中 / 绿色=已确认）+ 确认后的句柄
+// 绘制
 // ================================================================
 void SelectionWidget::paintEvent(QPaintEvent*)
 {
@@ -37,7 +39,7 @@ void SelectionWidget::paintEvent(QPaintEvent*)
     p.drawRect(rect());
 
     if (m_state == State::Confirmed)
-        m_handles.paint(p);              // 确认后绘制八向句柄
+        paintHandles(p);
 }
 
 // ================================================================
@@ -46,18 +48,14 @@ void SelectionWidget::paintEvent(QPaintEvent*)
 void SelectionWidget::parentMousePressEvent(QMouseEvent* e)
 {
     if (e->button() != Qt::LeftButton) return;
-
     QPoint pos = e->pos();
 
-    // 已确认状态：尝试拖拽句柄
     if (m_state == State::Confirmed) {
         m_selectionBeforeDrag = m_selection;
         m_dragStart = pos;
-        m_activeHandle = m_handles.hitTest(mapFromParent(pos));
+        m_activeHandle = hitTestHandle(mapFromParent(pos));
         return;
     }
-
-    // 空闲/绘制状态：开始新的选区拖拽
     beginDrawing(pos);
 }
 
@@ -72,55 +70,49 @@ void SelectionWidget::beginDrawing(QPoint pos)
 }
 
 // ================================================================
-// 鼠标移动 — 拖拽选区 / 缩放句柄
+// 鼠标移动
 // ================================================================
 void SelectionWidget::parentMouseMoveEvent(QMouseEvent* e)
 {
     QPoint pos = e->pos();
 
-    // 已确认 + 拖拽句柄 → 缩放选区
     if (m_state == State::Confirmed) {
-        if (m_activeHandle != SelectionHandles::None) {
-            QPoint delta = pos - m_dragStart;
-            m_selection = m_handles.applyResize(
-                m_selectionBeforeDrag, m_activeHandle, delta);
-            m_handles.updateLayout(rect());
+        if (m_activeHandle != None) {
+            m_selection = applyResize(m_selectionBeforeDrag, m_activeHandle, pos - m_dragStart);
+            updateHandleLayout();
             setGeometry(m_selection);
             emit selectionChanged(m_selection);
         } else {
-            updateCursor(e);            // 未拖拽 → 仅切换光标样式
+            updateCursor(e);
         }
         return;
     }
 
-    // 绘制状态 → 实时更新选区大小
     if (m_state == State::Drawing) {
         m_selection = QRect(m_startPoint, pos).normalized();
-        m_handles.updateLayout(m_selection);
+        updateHandleLayout();
         setGeometry(m_selection);
         emit selectionChanged(m_selection);
     }
 }
 
 // ================================================================
-// 鼠标释放 — 确认选区 / 取消
+// 鼠标释放
 // ================================================================
 void SelectionWidget::parentMouseReleaseEvent(QMouseEvent* e)
 {
     if (e->button() != Qt::LeftButton) return;
 
-    // 已确认状态：停止拖拽句柄
     if (m_state == State::Confirmed) {
-        m_activeHandle = SelectionHandles::None;
+        m_activeHandle = None;
         return;
     }
 
-    // 绘制状态：选区边长 > 10px 才确认
     if (m_state == State::Drawing) {
         m_selection = m_selection.normalized();
         if (m_selection.width() > 10 && m_selection.height() > 10) {
             m_state = State::Confirmed;
-            m_handles.updateLayout(rect());
+            updateHandleLayout();
             setGeometry(m_selection);
             emit selectionConfirmed();
         } else {
@@ -132,13 +124,82 @@ void SelectionWidget::parentMouseReleaseEvent(QMouseEvent* e)
 }
 
 // ================================================================
-// 光标：根据鼠标所在句柄切换缩放箭头样式
+// 句柄实现（内聚）
+// ================================================================
+void SelectionWidget::updateHandleLayout()
+{
+    const int hs = 8;
+    const QRect& r = m_selection;
+    int hhs = hs / 2;
+
+    m_handleRects[TopLeft]     = QRect(r.left()  - hhs, r.top()    - hhs, hs, hs);
+    m_handleRects[TopRight]    = QRect(r.right() - hhs, r.top()    - hhs, hs, hs);
+    m_handleRects[BottomLeft]  = QRect(r.left()  - hhs, r.bottom() - hhs, hs, hs);
+    m_handleRects[BottomRight] = QRect(r.right() - hhs, r.bottom() - hhs, hs, hs);
+
+    m_handleRects[Top]    = QRect(r.center().x() - hhs, r.top()    - hhs, hs, hs);
+    m_handleRects[Bottom] = QRect(r.center().x() - hhs, r.bottom() - hhs, hs, hs);
+    m_handleRects[Left]   = QRect(r.left()  - hhs, r.center().y() - hhs, hs, hs);
+    m_handleRects[Right]  = QRect(r.right() - hhs, r.center().y() - hhs, hs, hs);
+}
+
+void SelectionWidget::paintHandles(QPainter& painter) const
+{
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::white);
+    for (int i = 0; i < 8; ++i)
+        painter.drawRect(m_handleRects[i]);
+}
+
+SelectionWidget::Handle SelectionWidget::hitTestHandle(QPoint pos) const
+{
+    for (int i = 0; i < 8; ++i)
+        if (m_handleRects[i].contains(pos))
+            return static_cast<Handle>(i);
+    return None;
+}
+
+QCursor SelectionWidget::cursorForHandle(Handle h)
+{
+    switch (h) {
+    case TopLeft:     case BottomRight: return Qt::SizeFDiagCursor;
+    case TopRight:    case BottomLeft:  return Qt::SizeBDiagCursor;
+    case Left:        case Right:       return Qt::SizeHorCursor;
+    case Top:         case Bottom:      return Qt::SizeVerCursor;
+    default:          return Qt::CrossCursor;
+    }
+}
+
+QRect SelectionWidget::applyResize(const QRect& original, Handle h, QPoint delta) const
+{
+    const QRect& r = original;
+    switch (h) {
+    case TopLeft:     return QRect(r.topLeft() + delta, r.bottomRight()).normalized();
+    case TopRight:    return QRect(QPoint(r.right() + delta.x(), r.top() + delta.y()),
+                                   r.bottomLeft()).normalized();
+    case BottomLeft:  return QRect(QPoint(r.left() + delta.x(), r.bottom() + delta.y()),
+                                   r.topRight()).normalized();
+    case BottomRight: return QRect(r.topLeft(), r.bottomRight() + delta).normalized();
+    case Top:         return QRect(QPoint(r.left(), r.top() + delta.y()),
+                                   r.bottomRight()).normalized();
+    case Bottom:      return QRect(r.topLeft(),
+                                   QPoint(r.right(), r.bottom() + delta.y())).normalized();
+    case Left:        return QRect(QPoint(r.left() + delta.x(), r.top()),
+                                   r.bottomRight()).normalized();
+    case Right:       return QRect(r.topLeft(),
+                                   QPoint(r.right() + delta.x(), r.bottom())).normalized();
+    default:          return original;
+    }
+}
+
+// ================================================================
+// 光标
 // ================================================================
 void SelectionWidget::updateCursor(QMouseEvent* e)
 {
-    auto h = m_handles.hitTest(mapFromParent(e->pos()));
-    if (h != SelectionHandles::None)
-        parentWidget()->setCursor(m_handles.cursorFor(h));
+    Handle h = hitTestHandle(mapFromParent(e->pos()));
+    if (h != None)
+        parentWidget()->setCursor(cursorForHandle(h));
     else
         parentWidget()->setCursor(Qt::CrossCursor);
 }

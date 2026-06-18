@@ -15,3 +15,4 @@ target_include_directories(zcapture PUBLIC
 )
 
 add_subdirectory(tools)
+add_subdirectory(widgets)
