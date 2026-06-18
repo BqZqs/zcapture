@@ -21,48 +21,10 @@ CaptureOverlay::CaptureOverlay()
     QApplication::setOverrideCursor(Qt::CrossCursor);
 }
 
-// ----------------------------------------------------------------
-// handle geometry
-// ----------------------------------------------------------------
-void CaptureOverlay::updateHandleRects()
+void CaptureOverlay::updateHandlesAndBar()
 {
-    const int hs = 8;  // handle size
-    const QRect& r = m_selection;
-    int hhs = hs / 2;
-
-    // corners
-    m_handles[TopLeft]     = QRect(r.left() - hhs, r.top() - hhs, hs, hs);
-    m_handles[TopRight]    = QRect(r.right() - hhs, r.top() - hhs, hs, hs);
-    m_handles[BottomLeft]  = QRect(r.left() - hhs, r.bottom() - hhs, hs, hs);
-    m_handles[BottomRight] = QRect(r.right() - hhs, r.bottom() - hhs, hs, hs);
-
-    // edges
-    m_handles[Top]    = QRect(r.center().x() - hhs, r.top() - hhs, hs, hs);
-    m_handles[Bottom] = QRect(r.center().x() - hhs, r.bottom() - hhs, hs, hs);
-    m_handles[Left]   = QRect(r.left() - hhs, r.center().y() - hhs, hs, hs);
-    m_handles[Right]  = QRect(r.right() - hhs, r.center().y() - hhs, hs, hs);
-
-    // center
-    m_handles[Center] = r;
-
-    // action bar
-    m_actionBar.updateLayout(r);
-}
-
-QCursor CaptureOverlay::cursorForHandle(Handle h) const
-{
-    switch (h) {
-    case TopLeft:
-    case BottomRight: return Qt::SizeFDiagCursor;
-    case TopRight:
-    case BottomLeft:  return Qt::SizeBDiagCursor;
-    case Left:
-    case Right:       return Qt::SizeHorCursor;
-    case Top:
-    case Bottom:      return Qt::SizeVerCursor;
-    case Center:      return Qt::SizeAllCursor;
-    default:          return Qt::CrossCursor;
-    }
+    m_handles.updateLayout(m_selection);
+    m_actionBar.updateLayout(m_selection);
 }
 
 // ----------------------------------------------------------------
@@ -87,13 +49,7 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
         painter.drawRect(m_selection);
 
         if (m_confirmed) {
-            // draw 8 handles
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(Qt::white);
-            for (int i = 0; i < 8; ++i) {
-                painter.drawRect(m_handles[i]);
-            }
-            // draw action buttons
+            m_handles.paint(painter);
             m_actionBar.paint(painter);
         }
     }
@@ -117,7 +73,6 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* e)
     QPoint p = e->pos();
 
     if (m_confirmed) {
-        // check action buttons first
         ActionButton btn = m_actionBar.hitTest(p);
         if (btn == ActionButton::Save) {
             QApplication::restoreOverrideCursor();
@@ -134,15 +89,7 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* e)
 
         m_selectionBeforeDrag = m_selection;
         m_dragStart = p;
-        m_activeHandle = None;
-
-        // hit test handles (check corners/edges first, center last)
-        for (int i = 0; i < 9; ++i) {
-            if (m_handles[i].contains(p)) {
-                m_activeHandle = static_cast<Handle>(i);
-                break;
-            }
-        }
+        m_activeHandle = m_handles.hitTest(p);
         return;
     }
 
@@ -154,63 +101,22 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* e)
 void CaptureOverlay::mouseMoveEvent(QMouseEvent* e)
 {
     if (m_confirmed) {
-        if (m_activeHandle != None) {
+        if (m_activeHandle != SelectionHandles::None) {
             QPoint delta = e->pos() - m_dragStart;
-            QRect& r = m_selectionBeforeDrag;
-            auto& sel = m_selection;
-
-            switch (m_activeHandle) {
-            case TopLeft:
-                sel = QRect(r.topLeft() + delta, r.bottomRight()).normalized();
-                break;
-            case TopRight:
-                sel = QRect(QPoint(r.right() + delta.x(), r.top() + delta.y()),
-                            r.bottomLeft()).normalized();
-                break;
-            case BottomLeft:
-                sel = QRect(QPoint(r.left() + delta.x(), r.bottom() + delta.y()),
-                            r.topRight()).normalized();
-                break;
-            case BottomRight:
-                sel = QRect(r.topLeft(), r.bottomRight() + delta).normalized();
-                break;
-            case Top:
-                sel = QRect(QPoint(r.left(), r.top() + delta.y()),
-                            r.bottomRight()).normalized();
-                break;
-            case Bottom:
-                sel = QRect(r.topLeft(),
-                            QPoint(r.right(), r.bottom() + delta.y())).normalized();
-                break;
-            case Left:
-                sel = QRect(QPoint(r.left() + delta.x(), r.top()),
-                            r.bottomRight()).normalized();
-                break;
-            case Right:
-                sel = QRect(r.topLeft(),
-                            QPoint(r.right() + delta.x(), r.bottom())).normalized();
-                break;
-            case Center:
-                sel = r.translated(delta);
-                break;
-            default: return;
-            }
-            updateHandleRects();
+            m_selection = m_handles.applyResize(
+                m_selectionBeforeDrag, m_activeHandle, delta);
+            updateHandlesAndBar();
             update();
         } else {
-            // hover — update cursor
-            for (int i = 0; i < 9; ++i) {
-                if (m_handles[i].contains(e->pos())) {
-                    setCursor(cursorForHandle(static_cast<Handle>(i)));
-                    return;
-                }
-            }
-            setCursor(Qt::CrossCursor);
+            auto h = m_handles.hitTest(e->pos());
+            if (h != SelectionHandles::None)
+                setCursor(m_handles.cursorFor(h));
+            else
+                setCursor(Qt::CrossCursor);
         }
         return;
     }
 
-    // initial selection drag
     if (m_hasSelection) {
         m_selection = QRect(m_startPoint, e->pos()).normalized();
         update();
@@ -222,7 +128,7 @@ void CaptureOverlay::mouseReleaseEvent(QMouseEvent* e)
     if (e->button() != Qt::LeftButton) return;
 
     if (m_confirmed) {
-        m_activeHandle = None;
+        m_activeHandle = SelectionHandles::None;
         return;
     }
 
@@ -230,7 +136,7 @@ void CaptureOverlay::mouseReleaseEvent(QMouseEvent* e)
         m_selection = m_selection.normalized();
         if (m_selection.width() > 10 && m_selection.height() > 10) {
             m_confirmed = true;
-            updateHandleRects();
+            updateHandlesAndBar();
             update();
         } else {
             QApplication::restoreOverrideCursor();

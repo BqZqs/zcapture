@@ -6,6 +6,7 @@
 #include <QRect>
 
 #include "tools/abstractactiontool/captureactionbar.h"
+#include "tools/abstracttwopointtool/selectionhandles.h"
 
 class CaptureOverlay : public QWidget
 {
@@ -24,15 +25,7 @@ protected:
     void keyPressEvent(QKeyEvent*) override;
 
 private:
-    enum Handle {
-        None = -1,
-        TopLeft, Top, TopRight, Right,
-        BottomRight, Bottom, BottomLeft, Left,
-        Center
-    };
-
-    void updateHandleRects();
-    QCursor cursorForHandle(Handle h) const;
+    void updateHandlesAndBar();
 
     QPixmap m_screenshot;
     QPoint m_startPoint;
@@ -41,9 +34,8 @@ private:
     bool m_hasSelection = false;
     bool m_confirmed = false;
 
-    // resize / move handles
-    QRect m_handles[9];     // 0..7 = 8 handles, 8 = center
-    Handle m_activeHandle = None;
+    SelectionHandles m_handles;
+    SelectionHandles::Handle m_activeHandle = SelectionHandles::None;
     QPoint m_dragStart;
 
     CaptureActionBar m_actionBar;
