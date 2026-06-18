@@ -29,9 +29,14 @@ CaptureOverlay::CaptureOverlay()
     connect(m_selectionWidget, &SelectionWidget::selectionConfirmed,
             this, &CaptureOverlay::onSelectionConfirmed);
 
-    // 确认/取消按钮
     auto* cancelBtn = new CaptureToolButton(CaptureToolButton::Cancel, this);
     auto* saveBtn   = new CaptureToolButton(CaptureToolButton::Save, this);
+    connect(cancelBtn, &CaptureToolButton::clicked, this, [this]() {
+        m_actions->executeCancel();
+    });
+    connect(saveBtn, &CaptureToolButton::clicked, this, [this]() {
+        m_actions->executeSave(m_screenshot, m_selectionWidget->selection());
+    });
     m_buttonHandler.setButtons({ cancelBtn, saveBtn });
 
     // 动作逻辑（裁剪截图 → 发射信号）
@@ -69,24 +74,6 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
         painter.drawText(rect().adjusted(0, 0, 0, -20),
                          Qt::AlignHCenter | Qt::AlignBottom,
                          "Drag to select a region  |  ESC to cancel");
-    }
-}
-
-// ================================================================
-// 鼠标：仅处理按钮点击
-// ================================================================
-void CaptureOverlay::mousePressEvent(QMouseEvent* e)
-{
-    if (e->button() != Qt::LeftButton) return;
-
-    if (m_selectionWidget->isConfirmed()) {
-        auto* btn = m_buttonHandler.hitTest(e->pos());
-        if (!btn) return;
-
-        if (btn->toolType() == CaptureToolButton::Save)
-            m_actions->executeSave(m_screenshot, m_selectionWidget->selection());
-        else
-            m_actions->executeCancel();
     }
 }
 

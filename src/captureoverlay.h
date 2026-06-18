@@ -23,7 +23,6 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent*) override;
-    void mousePressEvent(QMouseEvent*) override;     // 仅处理按钮点击
     void keyPressEvent(QKeyEvent*) override;         // ESC / Enter
 
 private slots:
