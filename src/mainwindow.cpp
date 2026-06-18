@@ -19,10 +19,12 @@ MainWindow::MainWindow(QWidget* parent)
     lay->setSpacing(12);
     lay->setContentsMargins(20, 15, 20, 15);
 
+    // 标题
     auto* title = new QLabel("<h2>ZCapture</h2>");
     title->setAlignment(Qt::AlignCenter);
     lay->addWidget(title);
 
+    // 保存路径行：文本框 + 浏览按钮
     auto* pathRow = new QHBoxLayout();
     pathRow->addWidget(new QLabel("Save Path:"));
     m_pathEdit = new QLineEdit();
@@ -36,6 +38,7 @@ MainWindow::MainWindow(QWidget* parent)
     pathRow->addWidget(browseBtn);
     lay->addLayout(pathRow);
 
+    // 截图按钮
     m_captureBtn = new QPushButton("Capture Screenshot");
     m_captureBtn->setFixedHeight(42);
     m_captureBtn->setStyleSheet(
@@ -48,6 +51,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_captureBtn, &QPushButton::clicked, this, &MainWindow::startCapture);
     lay->addWidget(m_captureBtn);
 
+    // 状态标签
     m_status = new QLabel("Ready");
     m_status->setAlignment(Qt::AlignCenter);
     m_status->setStyleSheet("color: gray;");
@@ -57,7 +61,7 @@ MainWindow::MainWindow(QWidget* parent)
 void MainWindow::browsePath()
 {
     QString dir = QFileDialog::getExistingDirectory(this, "Save Directory",
-                                                    m_pathEdit->text());
+                                                     m_pathEdit->text());
     if (!dir.isEmpty()) m_pathEdit->setText(dir);
 }
 
@@ -69,9 +73,10 @@ void MainWindow::startCapture()
         m_status->setStyleSheet("color: red;");
         return;
     }
+
+    // 隐藏自己，等一帧后弹出全屏截图层
     hide();
     QApplication::processEvents();
-
     QTimer::singleShot(300, this, [this]() {
         auto* overlay = new CaptureOverlay();
         connect(overlay, &CaptureOverlay::captureFinished,
@@ -85,12 +90,14 @@ void MainWindow::onCaptureFinished(const QPixmap& pixmap)
     show();
     activateWindow();
 
+    // 空图像表示用户取消
     if (pixmap.isNull()) {
         m_status->setText("Capture cancelled");
         m_status->setStyleSheet("color: gray;");
         return;
     }
 
+    // 用当前时间戳命名保存
     QString file = m_saveDir + "/zcapture_" +
                    QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss") +
                    ".png";
