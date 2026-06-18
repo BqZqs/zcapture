@@ -114,6 +114,7 @@ void SelectionWidget::parentMouseReleaseEvent(QMouseEvent* e)
             m_state = State::Confirmed;
             updateHandleLayout();
             setGeometry(m_selection);
+            update(); 
             emit selectionConfirmed();
         } else {
             m_state = State::Idle;
