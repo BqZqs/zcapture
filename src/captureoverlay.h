@@ -10,6 +10,7 @@
 #include "widgets/capture/buttonhandler.h"
 
 class SelectionWidget;
+class CaptureActions;
 
 class CaptureOverlay : public QWidget
 {
@@ -28,9 +29,11 @@ protected:
 private slots:
     void onSelectionChanged(const QRect& rect);
     void onSelectionConfirmed();
+    void onActionFinished(const QPixmap& result);     // CaptureActions 完成回调
 
 private:
     QPixmap m_screenshot;
     SelectionWidget* m_selectionWidget;   // 选区控件（eventFilter 拦截鼠标）
     ButtonHandler m_buttonHandler;        // 确认/取消按钮管理
+    CaptureActions* m_actions;            // 确认/取消的动作逻辑
 };

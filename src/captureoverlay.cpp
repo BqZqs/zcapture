@@ -1,6 +1,7 @@
 #include "captureoverlay.h"
 #include "widgets/capture/selectionwidget.h"
 #include "widgets/capture/capturetoolbutton.h"
+#include "tools/abstractactiontool/captureactions.h"
 
 #include <QApplication>
 #include <QPainter>
@@ -32,6 +33,11 @@ CaptureOverlay::CaptureOverlay()
     auto* cancelBtn = new CaptureToolButton(CaptureToolButton::Cancel, this);
     auto* saveBtn   = new CaptureToolButton(CaptureToolButton::Save, this);
     m_buttonHandler.setButtons({ cancelBtn, saveBtn });
+
+    // 动作逻辑（裁剪截图 → 发射信号）
+    m_actions = new CaptureActions(this);
+    connect(m_actions, &CaptureActions::finished,
+            this, &CaptureOverlay::onActionFinished);
 
     QApplication::setOverrideCursor(Qt::CrossCursor);
 }
@@ -67,7 +73,7 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
 }
 
 // ================================================================
-// 鼠标：仅处理按钮点击（选区拖拽由 SelectionWidget eventFilter 接管）
+// 鼠标：仅处理按钮点击
 // ================================================================
 void CaptureOverlay::mousePressEvent(QMouseEvent* e)
 {
@@ -77,14 +83,10 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* e)
         auto* btn = m_buttonHandler.hitTest(e->pos());
         if (!btn) return;
 
-        QApplication::restoreOverrideCursor();
-
-        if (btn->toolType() == CaptureToolButton::Save) {
-            emit captureFinished(m_screenshot.copy(m_selectionWidget->selection()));
-        } else {
-            emit captureFinished(QPixmap());       // 空图 = 取消
-        }
-        close();
+        if (btn->toolType() == CaptureToolButton::Save)
+            m_actions->executeSave(m_screenshot, m_selectionWidget->selection());
+        else
+            m_actions->executeCancel();
     }
 }
 
@@ -93,21 +95,15 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* e)
 // ================================================================
 void CaptureOverlay::keyPressEvent(QKeyEvent* e)
 {
-    if (e->key() == Qt::Key_Escape) {
-        QApplication::restoreOverrideCursor();
-        emit captureFinished(QPixmap());
-        close();
-    }
+    if (e->key() == Qt::Key_Escape)
+        m_actions->executeCancel();
     if (m_selectionWidget->isConfirmed() &&
-        (e->key() == Qt::Key_Enter || e->key() == Qt::Key_Return)) {
-        QApplication::restoreOverrideCursor();
-        emit captureFinished(m_screenshot.copy(m_selectionWidget->selection()));
-        close();
-    }
+        (e->key() == Qt::Key_Enter || e->key() == Qt::Key_Return))
+        m_actions->executeSave(m_screenshot, m_selectionWidget->selection());
 }
 
 // ================================================================
-// SelectionWidget 信号槽
+// 信号槽
 // ================================================================
 void CaptureOverlay::onSelectionChanged(const QRect& /*rect*/)
 {
@@ -119,4 +115,11 @@ void CaptureOverlay::onSelectionConfirmed()
     m_buttonHandler.updatePosition(m_selectionWidget->selection());
     m_buttonHandler.show();
     update();
+}
+
+void CaptureOverlay::onActionFinished(const QPixmap& result)
+{
+    QApplication::restoreOverrideCursor();
+    emit captureFinished(result);
+    close();
 }
