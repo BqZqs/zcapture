@@ -1,3 +1,1 @@
-target_sources(zcapture PRIVATE
-    selectionwidget.cpp
-)
+# 两点定形工具 — 矩形/圆/箭头/线等（待实现）

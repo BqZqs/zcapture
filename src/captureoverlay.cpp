@@ -1,5 +1,5 @@
 #include "captureoverlay.h"
-#include "tools/abstracttwopointtool/selectionwidget.h"
+#include "widgets/capture/selectionwidget.h"
 #include "widgets/capture/capturetoolbutton.h"
 
 #include <QApplication>
