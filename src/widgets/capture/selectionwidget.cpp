@@ -129,8 +129,8 @@ void SelectionWidget::parentMouseReleaseEvent(QMouseEvent* e)
 // ================================================================
 void SelectionWidget::updateHandleLayout()
 {
-    const int hs = 16;
-    QRect r(0, 0, m_selection.width(), m_selection.height());   // 控件自身坐标系
+    const int hs = 14;
+    QRect r(0, 0, m_selection.width(), m_selection.height());
     const int hhs = hs / 2;
 
     m_handleRects[TopLeft]     = QRect(r.left()  - hhs, r.top()    - hhs, hs, hs);
@@ -146,10 +146,14 @@ void SelectionWidget::updateHandleLayout()
 
 void SelectionWidget::paintHandles(QPainter& painter) const
 {
-    painter.setPen(QPen(Qt::black, 1));     // 黑边
-    painter.setBrush(Qt::white);            // 白色填充
+    painter.save();
+    painter.setClipRect(rect().adjusted(-8, -8, 8, 8));   // 句柄超出选区边界也能完整显示
+    painter.setPen(QPen(Qt::black, 2));                    // 加粗黑边
+    painter.setBrush(Qt::white);                           // 白色填充
+    painter.setRenderHint(QPainter::Antialiasing);          // 抗锯齿
     for (int i = 0; i < 8; ++i)
         painter.drawEllipse(m_handleRects[i]);
+    painter.restore();
 }
 
 SelectionWidget::Handle SelectionWidget::hitTestHandle(QPoint pos) const
